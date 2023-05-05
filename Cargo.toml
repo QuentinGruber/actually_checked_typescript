@@ -10,3 +10,9 @@ clap = { version = "4.0.32", features = ["derive"] }
 swc_common = "0.29.27"
 swc_ecma_ast = "0.96.0"
 swc_ecma_parser = "0.124.0"
+
+
+[profile.release]
+lto = true
+strip = true
+opt-level = 3

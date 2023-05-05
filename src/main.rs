@@ -1,15 +1,8 @@
-use std::{
-    any::{Any, TypeId},
-    fs,
-    path::{Path, PathBuf},
-    rc::Rc,
-    string,
-    thread::spawn,
-};
+use std::{fs, path::PathBuf, thread::spawn};
 
 use swc_common::sync::Lrc;
 use swc_common::SourceMap;
-use swc_ecma_ast::{FnDecl, Function, ModuleItem, Param, TsKeywordTypeKind, TsTypeAnn};
+use swc_ecma_ast::{FnDecl, ModuleItem, Param, TsKeywordTypeKind};
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax};
 
 fn get_files_paths(folder_path: String) -> Vec<PathBuf> {
@@ -19,6 +12,7 @@ fn get_files_paths(folder_path: String) -> Vec<PathBuf> {
         .filter(|entry| {
             entry.file_type().map(|ft| ft.is_file()).unwrap_or(false)
                 && entry.path().extension().unwrap_or_default() == "ts"
+                && !entry.path().to_str().unwrap().contains(".checked")
         })
         .map(|entry| entry.path())
         .collect::<Vec<_>>();
@@ -29,7 +23,7 @@ fn get_files_paths(folder_path: String) -> Vec<PathBuf> {
 #[derive(Debug)]
 struct PatchAct {
     byte_pos: u32,
-    patch: String, // ou un buff genre
+    patch: Vec<u8>,
 }
 
 #[derive(Debug)]
@@ -61,21 +55,27 @@ fn get_typeact_from_typeid(typeid: TsKeywordTypeKind) -> TypeAct {
 
     return TypeAct::Unknown;
 }
+
+fn get_param_type_id(param: &Param) -> TsKeywordTypeKind {
+    let param_type_ann = param
+        .clone()
+        .pat
+        .ident()
+        .unwrap()
+        .type_ann
+        .unwrap()
+        .type_ann;
+    if param_type_ann.is_ts_keyword_type() {
+        return param_type_ann.ts_keyword_type().unwrap().kind;
+    } else {
+        return TsKeywordTypeKind::TsUnknownKeyword;
+    }
+}
 fn get_function_params(params: Vec<Param>) -> Vec<ParamAct> {
     let mut params_act: Vec<ParamAct> = vec![];
     for param in params {
-        let param_type_id = param
-            .clone()
-            .pat
-            .ident()
-            .unwrap()
-            .type_ann
-            .unwrap()
-            .type_ann
-            .ts_keyword_type()
-            .unwrap()
-            .kind;
-        let param_name = param.clone().pat.ident().unwrap().sym.to_string();
+        let param_type_id = get_param_type_id(&param);
+        let param_name = param.pat.ident().unwrap().sym.to_string();
         params_act.push(ParamAct {
             name: param_name,
             act_type: get_typeact_from_typeid(param_type_id),
@@ -105,10 +105,27 @@ fn get_function_patches(function_act: FunctionAct) -> Vec<PatchAct> {
     return patches;
 }
 
+fn get_tstype_from_acttype(act_type: TypeAct) -> String {
+    match act_type {
+        TypeAct::Number => "number".to_string(),
+        TypeAct::String => "string".to_string(),
+        TypeAct::Unknown => "unknown".to_string(),
+    }
+}
+
 fn get_function_param_patch(param: ParamAct, body_start: u32) -> PatchAct {
+    let param_ts_type = get_tstype_from_acttype(param.act_type);
+    let patch_string = format!(
+        r#"
+    if(typeof {} !== '{}'){{
+      throw `{} isn't of type {} but of type ${{typeof {}}}`
+    }}
+    "#,
+        param.name, param_ts_type, param.name, param_ts_type, param.name
+    );
     return PatchAct {
         byte_pos: body_start,
-        patch: param.name,
+        patch: patch_string.as_bytes().to_vec(),
     };
 }
 
@@ -125,12 +142,12 @@ fn get_function_params_patches(params: Vec<ParamAct>, body_start: u32) -> Vec<Pa
 
 fn apply_patches(patches: Vec<PatchAct>, file_path: PathBuf) -> Result<(), String> {
     let mut buffer = fs::read(&file_path).unwrap_or_default();
-    // faut penser aux multiple patch qui decale l'index genre faudrais faire une hashmap /
+    // TODO: faut penser aux multiple patch qui decale l'index genre faudrais faire une hashmap /
     // datastructure qui permet de savoir combien faut decal entre chaque patch en fonction de
     // l'index a modifier
     for patch in patches {
         let pos: usize = patch.byte_pos as usize;
-        buffer.splice(pos..pos, patch.patch.as_bytes().to_vec());
+        buffer.splice(pos..pos, patch.patch);
     }
     let patched_file_path: PathBuf = file_path.with_extension("checked.ts");
     fs::write(patched_file_path, buffer).unwrap();
@@ -175,9 +192,8 @@ fn process_file(file_path: PathBuf) -> Result<(), String> {
         .parse_typescript_module()
         .expect("failed to parser module");
     let patches = process_module_items(module.body);
-    println!("{:#?}", patches);
 
-    apply_patches(patches, file_path);
+    apply_patches(patches, file_path).unwrap();
 
     Ok(())
 }
@@ -189,5 +205,15 @@ fn main() {
         spawn(move || process_file(file_path).unwrap())
             .join()
             .unwrap();
+    }
+}
+
+//TODO: test buffer unitaire
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn mdr_test() {
+        assert_eq!(1, 1)
     }
 }
