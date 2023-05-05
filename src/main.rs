@@ -140,14 +140,48 @@ fn get_function_params_patches(params: Vec<ParamAct>, body_start: u32) -> Vec<Pa
     return params_patches;
 }
 
+struct ModifiedIndex {
+    pos: u32,
+    size: u32,
+}
+
+struct PatchIndexHelper {
+    pub higher_index: u32,
+    pub indexes_modified: Vec<ModifiedIndex>,
+}
+
+impl PatchIndexHelper {
+    pub fn new() -> PatchIndexHelper {
+        PatchIndexHelper {
+            higher_index: 0,
+            indexes_modified: vec![],
+        }
+    }
+
+    pub fn register_patched_index(&mut self, index: u32, size: u32) {
+        let modified_index = ModifiedIndex { pos: index, size };
+        self.indexes_modified.push(modified_index);
+    }
+
+    pub fn get_drifted_index(&mut self, original_index: u32) -> u32 {
+        let mut drifted_index = original_index;
+        for index_modify in &self.indexes_modified {
+            if original_index >= index_modify.pos {
+                drifted_index += index_modify.size;
+            }
+        }
+        return drifted_index;
+    }
+}
+
 fn apply_patches(patches: Vec<PatchAct>, file_path: PathBuf) -> Result<(), String> {
     let mut buffer = fs::read(&file_path).unwrap_or_default();
-    // TODO: faut penser aux multiple patch qui decale l'index genre faudrais faire une hashmap /
-    // datastructure qui permet de savoir combien faut decal entre chaque patch en fonction de
-    // l'index a modifier
+    let mut patch_index_helper = PatchIndexHelper::new();
     for patch in patches {
-        let pos: usize = patch.byte_pos as usize;
+        let pos: usize = patch_index_helper.get_drifted_index(patch.byte_pos) as usize;
+        let patch_len: u32 = patch.patch.len() as u32;
         buffer.splice(pos..pos, patch.patch);
+        patch_index_helper.register_patched_index(patch.byte_pos, patch_len)
     }
     let patched_file_path: PathBuf = file_path.with_extension("checked.ts");
     fs::write(patched_file_path, buffer).unwrap();
