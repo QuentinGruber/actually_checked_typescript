@@ -196,12 +196,14 @@ fn process_function(fn_decl: FnDecl) -> Vec<PatchAct> {
 fn process_module_items(module_items: Vec<ModuleItem>) -> Vec<PatchAct> {
     let mut function_patches: Vec<PatchAct> = vec![];
     for item in module_items {
-        let stmt = item.stmt().unwrap();
-        if stmt.is_decl() {
-            let decl = stmt.decl().unwrap();
-            if decl.is_fn_decl() {
-                let fn_decl = decl.fn_decl().unwrap();
-                function_patches.extend(process_function(fn_decl));
+        if item.is_stmt() {
+            let stmt = item.stmt().unwrap();
+            if stmt.is_decl() {
+                let decl = stmt.decl().unwrap();
+                if decl.is_fn_decl() {
+                    let fn_decl = decl.fn_decl().unwrap();
+                    function_patches.extend(process_function(fn_decl));
+                }
             }
         }
     }
@@ -236,9 +238,9 @@ fn main() {
     let folder_path = std::env::args().nth(1).expect("No folder path provided");
     let files = get_files_paths(folder_path);
     for file_path in files {
-        spawn(move || process_file(file_path).unwrap())
+        spawn(move || process_file(file_path).unwrap_or(()))
             .join()
-            .unwrap();
+            .unwrap_or(());
     }
 }
 
