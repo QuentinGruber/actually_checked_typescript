@@ -1,0 +1,32 @@
+#[derive(Debug)]
+pub struct PatchAct {
+    pub byte_pos: u32,
+    pub patch: Vec<u8>,
+}
+
+#[derive(Debug)]
+pub struct FunctionAct {
+    pub name: String,
+    pub params: Vec<ParamAct>,
+    pub body_start: u32,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TypeAct {
+    Number,
+    String,
+    Unknown,
+}
+#[derive(Debug)]
+pub struct ParamAct {
+    pub name: String,
+    pub act_type: TypeAct,
+}
+
+pub fn get_tstype_from_acttype(act_type: TypeAct) -> String {
+    match act_type {
+        TypeAct::Number => "number".to_string(),
+        TypeAct::String => "string".to_string(),
+        TypeAct::Unknown => "unknown".to_string(),
+    }
+}
