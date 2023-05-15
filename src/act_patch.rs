@@ -5,16 +5,37 @@ use crate::{
     patch_index_helper::PatchIndexHelper,
 };
 
-pub fn get_function_param_patch(param: ParamAct, body_start: u32) -> PatchAct {
+#[derive(Debug)]
+pub enum PatchType {
+    Warning,
+    Error,
+    Fix,
+}
+
+pub fn gen_param_type_check_patch(param: ParamAct, patch_type: PatchType) -> String {
     let param_ts_type = get_tstype_from_acttype(param.act_type);
+    let log_message = format!(
+        r#"`{} isn't of type {} but of type ${{typeof {}}}`"#,
+        param.name, param_ts_type, param.name
+    );
+    let patch_body = match patch_type {
+        PatchType::Fix => format!(r#"console.warn({})"#, log_message), // TODO
+        PatchType::Error => format!(r#"throw {}"#, log_message),
+        PatchType::Warning => format!(r#"console.warn({})"#, log_message),
+    };
     let patch_string = format!(
         r#"
     if(typeof {} !== '{}'){{
-      throw `{} isn't of type {} but of type ${{typeof {}}}`
+    {}
     }}
     "#,
-        param.name, param_ts_type, param.name, param_ts_type, param.name
+        param.name, param_ts_type, patch_body
     );
+    return patch_string;
+}
+
+pub fn get_function_param_patch(param: ParamAct, body_start: u32) -> PatchAct {
+    let patch_string = gen_param_type_check_patch(param, PatchType::Warning);
     return PatchAct {
         byte_pos: body_start,
         patch: patch_string.as_bytes().to_vec(),
@@ -45,4 +66,3 @@ pub fn apply_patches(patches: Vec<PatchAct>, file_path: PathBuf) -> Result<(), S
     fs::write(patched_file_path, buffer).unwrap();
     Ok(())
 }
-
