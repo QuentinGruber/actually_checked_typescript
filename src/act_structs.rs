@@ -11,6 +11,18 @@ pub struct FunctionAct {
     pub body_start: u32,
 }
 
+#[derive(Debug)]
+pub struct MethodAct {
+    pub function: FunctionAct,
+}
+
+#[derive(Debug)]
+pub struct ClassAct {
+    pub name: String,
+    // TODO: constructor
+    pub methods: Vec<MethodAct>,
+}
+
 #[derive(Debug, PartialEq)]
 pub enum TypeAct {
     Number,
