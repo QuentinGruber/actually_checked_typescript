@@ -2,7 +2,9 @@ use std::{path::PathBuf, println, vec};
 
 use swc_common::sync::Lrc;
 use swc_common::SourceMap;
-use swc_ecma_ast::{ClassDecl, FnDecl, Function, ModuleItem, Param, TsKeywordTypeKind};
+use swc_ecma_ast::{
+    ClassDecl, Decl, FnDecl, FnExpr, Function, ModuleItem, Param, TsKeywordTypeKind,
+};
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax};
 
 use crate::{
@@ -68,9 +70,16 @@ pub fn get_function_patches(function_act: FunctionAct) -> Vec<PatchAct> {
     return patches;
 }
 
-pub fn process_function(fn_decl: FnDecl) -> Vec<PatchAct> {
+pub fn process_function_decl(fn_decl: FnDecl) -> Vec<PatchAct> {
     let function_name = fn_decl.ident.sym.to_string();
     let function_act = get_function_act(function_name, fn_decl.function);
+    let function_patches: Vec<PatchAct> = get_function_patches(function_act);
+    return function_patches;
+}
+
+pub fn process_function_expr(fn_expr: FnExpr) -> Vec<PatchAct> {
+    let function_name = fn_expr.ident.unwrap().sym.to_string();
+    let function_act = get_function_act(function_name, fn_expr.function);
     let function_patches: Vec<PatchAct> = get_function_patches(function_act);
     return function_patches;
 }
@@ -120,10 +129,22 @@ fn get_methods_patches(class_act: ClassAct) -> Vec<PatchAct> {
     return patches;
 }
 
-pub fn process_class(class_decl: ClassDecl) -> Vec<PatchAct> {
+pub fn process_class_decl(class_decl: ClassDecl) -> Vec<PatchAct> {
     let class_act = get_class_act(class_decl);
     let class_patches: Vec<PatchAct> = get_class_patches(class_act);
     return class_patches;
+}
+
+pub fn process_decl(decl: Decl) -> Vec<PatchAct> {
+    if decl.is_fn_decl() {
+        let fn_decl = decl.fn_decl().unwrap();
+        return process_function_decl(fn_decl);
+    } else if decl.is_class() {
+        let class_decl = decl.class().unwrap();
+        return process_class_decl(class_decl);
+    } else {
+        return vec![];
+    }
 }
 
 pub fn process_module_items(module_items: Vec<ModuleItem>) -> Vec<PatchAct> {
@@ -133,13 +154,23 @@ pub fn process_module_items(module_items: Vec<ModuleItem>) -> Vec<PatchAct> {
             let stmt = item.stmt().unwrap();
             if stmt.is_decl() {
                 let decl = stmt.decl().unwrap();
-                if decl.is_fn_decl() {
-                    let fn_decl = decl.fn_decl().unwrap();
-                    patches.extend(process_function(fn_decl));
-                } else if decl.is_class() {
-                    let class_decl = decl.class().unwrap();
-                    patches.extend(process_class(class_decl));
+                patches.extend(process_decl(decl));
+            } else if stmt.is_expr() {
+                let expr = stmt.expr().unwrap().expr;
+                if expr.is_fn_expr() {
+                    let fn_expr = expr.fn_expr().unwrap();
+                    patches.extend(process_function_expr(fn_expr));
+                } else if expr.is_arrow() {
+                    let arrow_expr = expr.arrow().unwrap();
+                    // TODO
                 }
+            }
+        } else if item.is_module_decl() {
+            let module_decl = item.module_decl().unwrap();
+            if module_decl.is_export_decl() {
+                let export_decl = module_decl.export_decl().unwrap();
+                let decl = export_decl.decl;
+                patches.extend(process_decl(decl));
             }
         }
     }
