@@ -1,7 +1,9 @@
 use std::{fs, path::PathBuf};
 
 use crate::{
-    act_structs::{get_tstype_from_acttype, ParamAct, PatchAct, TypeAct},
+    act_structs::{
+        get_js_constructor_from_acttype, get_ts_type_from_acttype, ParamAct, PatchAct, TypeAct,
+    },
     patch_index_helper::PatchIndexHelper,
 };
 
@@ -13,15 +15,19 @@ pub enum PatchType {
 }
 
 pub fn gen_param_type_check_patch(param: ParamAct, patch_type: PatchType) -> String {
-    let param_ts_type = get_tstype_from_acttype(param.act_type);
+    let param_ts_type = get_ts_type_from_acttype(&param.act_type);
+    let param_js_constructor = get_js_constructor_from_acttype(&param.act_type);
     let log_message = format!(
         r#"`{} isn't of type {} but of type ${{typeof {}}}`"#,
         param.name, param_ts_type, param.name
     );
     let patch_body = match patch_type {
-        PatchType::Fix => format!(r#"console.warn({})"#, log_message), // TODO
-        PatchType::Error => format!(r#"throw {}"#, log_message),
-        PatchType::Warning => format!(r#"console.warn({})"#, log_message),
+        PatchType::Fix => format!(
+            r#"console.warn({}," and was casted"); {}({});"#,
+            log_message, param_js_constructor, param.name
+        ),
+        PatchType::Error => format!(r#"throw {};"#, log_message),
+        PatchType::Warning => format!(r#"console.warn({});"#, log_message),
     };
     let patch_string = format!(
         r#"
@@ -35,7 +41,7 @@ pub fn gen_param_type_check_patch(param: ParamAct, patch_type: PatchType) -> Str
 }
 
 pub fn get_function_param_patch(param: ParamAct, body_start: u32) -> PatchAct {
-    let patch_string = gen_param_type_check_patch(param, PatchType::Warning);
+    let patch_string = gen_param_type_check_patch(param, PatchType::Fix);
     return PatchAct {
         byte_pos: body_start,
         patch: patch_string.as_bytes().to_vec(),

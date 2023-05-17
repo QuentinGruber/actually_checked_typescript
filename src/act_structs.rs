@@ -35,10 +35,18 @@ pub struct ParamAct {
     pub act_type: TypeAct,
 }
 
-pub fn get_tstype_from_acttype(act_type: TypeAct) -> String {
+pub fn get_ts_type_from_acttype(act_type: &TypeAct) -> String {
     match act_type {
         TypeAct::Number => "number".to_string(),
         TypeAct::String => "string".to_string(),
         TypeAct::Unknown => "unknown".to_string(),
+    }
+}
+
+pub fn get_js_constructor_from_acttype(act_type: &TypeAct) -> String {
+    match act_type {
+        TypeAct::Number => "Number".to_string(),
+        TypeAct::String => "String".to_string(),
+        TypeAct::Unknown => "".to_string(),
     }
 }
