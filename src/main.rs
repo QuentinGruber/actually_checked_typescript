@@ -1,4 +1,5 @@
-use act_lib::act_process::process_file;
+use act_lib::{act_process::process_file, args_parser::ActArgs};
+use clap::Parser;
 use std::{fs, path::PathBuf, thread::spawn};
 
 fn get_files_paths(folder_path: String) -> Vec<PathBuf> {
@@ -17,7 +18,8 @@ fn get_files_paths(folder_path: String) -> Vec<PathBuf> {
 }
 
 fn main() {
-    let folder_path = std::env::args().nth(1).expect("No folder path provided");
+    let args = ActArgs::parse();
+    let folder_path = args.folder_path;
     let files = get_files_paths(folder_path);
     for file_path in files {
         spawn(move || process_file(file_path).unwrap_or(()))

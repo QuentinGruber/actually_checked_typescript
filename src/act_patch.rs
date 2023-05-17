@@ -1,20 +1,36 @@
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, str::FromStr};
 
 use crate::{
     act_structs::{
         get_js_constructor_from_acttype, get_ts_type_from_acttype, ParamAct, PatchAct, TypeAct,
     },
+    args_parser::ActArgs,
     patch_index_helper::PatchIndexHelper,
 };
+use clap::Parser;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PatchType {
     Warning,
     Error,
     Fix,
 }
+impl FromStr for PatchType {
+    type Err = String;
 
-pub fn gen_param_type_check_patch(param: ParamAct, patch_type: PatchType) -> String {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "warning" => Ok(PatchType::Warning),
+            "error" => Ok(PatchType::Error),
+            "fix" => Ok(PatchType::Fix),
+            _ => Err(String::from("Invalid enum value")),
+        }
+    }
+}
+
+pub fn gen_param_type_check_patch(param: ParamAct) -> String {
+    let args = ActArgs::parse();
+    let patch_type = args.patch_type;
     let param_ts_type = get_ts_type_from_acttype(&param.act_type);
     let param_js_constructor = get_js_constructor_from_acttype(&param.act_type);
     let log_message = format!(
@@ -41,7 +57,7 @@ pub fn gen_param_type_check_patch(param: ParamAct, patch_type: PatchType) -> Str
 }
 
 pub fn get_function_param_patch(param: ParamAct, body_start: u32) -> PatchAct {
-    let patch_string = gen_param_type_check_patch(param, PatchType::Fix);
+    let patch_string = gen_param_type_check_patch(param);
     return PatchAct {
         byte_pos: body_start,
         patch: patch_string.as_bytes().to_vec(),
