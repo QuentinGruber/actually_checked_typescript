@@ -1,25 +1,25 @@
 use act_lib::{act_process::process_file, args_parser::ActArgs};
 use clap::Parser;
-use std::{
-    fs,
-    path::PathBuf,
-    println,
-    thread::{self, spawn},
-};
+use std::{fs, path::PathBuf, println, thread};
 
 fn get_files_paths(folder_path: String) -> Vec<PathBuf> {
-    let files = fs::read_dir(folder_path)
-        .expect("Unable to read directory")
-        .filter_map(Result::ok)
-        .filter(|entry| {
-            entry.file_type().map(|ft| ft.is_file()).unwrap_or(false)
-                && entry.path().extension().unwrap_or_default() == "ts"
-                && !entry.path().to_str().unwrap().contains(".checked")
-        })
-        .map(|entry| entry.path())
-        .collect::<Vec<_>>();
-
-    return files;
+    let files = fs::read_dir(folder_path).expect("Unable to read directory");
+    let mut files_to_process: Vec<PathBuf> = vec![];
+    for file in files {
+        let entry = file.unwrap();
+        let file_type = entry.file_type().unwrap();
+        if file_type.is_file() {
+            let is_ts_file = entry.path().extension().unwrap_or_default() == "ts";
+            // TODO: remove
+            let is_not_checked = !entry.path().to_str().unwrap().contains(".checked");
+            if is_ts_file && is_not_checked {
+                files_to_process.push(entry.path())
+            }
+        } else if file_type.is_dir() {
+            files_to_process.extend(get_files_paths(entry.path().to_str().unwrap().to_string()));
+        }
+    }
+    return files_to_process;
 }
 
 fn main() {
