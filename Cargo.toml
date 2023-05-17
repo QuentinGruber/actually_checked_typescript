@@ -7,9 +7,9 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.2.7", features = ["derive"] }
-swc_common = "0.29.27"
-swc_ecma_ast = "0.96.0"
-swc_ecma_parser = "0.124.0"
+swc_common = "0.31.10"
+swc_ecma_ast = "0.104.3"
+swc_ecma_parser = "0.134.5"
 
 [lib]
 name = "act_lib"
