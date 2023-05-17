@@ -8,7 +8,7 @@ function concat(a: string, b: string): string {
   return a + b;
 }
 
-export function concat2(a: string, b: string): string {
+export function concat2(a: string = "d", b: string): string {
   return a + b;
 }
 

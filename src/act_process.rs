@@ -1,11 +1,12 @@
 use std::{path::PathBuf, println, vec};
 
-use swc_common::sync::Lrc;
-use swc_common::SourceMap;
+use swc_common::{sync::Lrc, Span};
+use swc_common::{BytePos, SourceMap, SyntaxContext};
 use swc_ecma_ast::{
-    ClassDecl, Decl, FnDecl, FnExpr, Function, ModuleItem, Param, TsKeywordTypeKind,
+    ClassDecl, Decl, EsVersion, FnDecl, FnExpr, Function, ModuleItem, Param, TsKeywordType,
+    TsKeywordTypeKind, TsType,
 };
-use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax};
+use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsConfig};
 
 use crate::{
     act_patch::{apply_patches, get_function_params_patches},
@@ -24,25 +25,43 @@ pub fn get_typeact_from_typeid(typeid: TsKeywordTypeKind) -> TypeAct {
 }
 
 pub fn get_param_type_id(param: &Param) -> TsKeywordTypeKind {
-    let param_type_ann = param
-        .clone()
-        .pat
-        .ident()
-        .unwrap()
-        .type_ann
-        .unwrap()
-        .type_ann;
+    let param_pat = param.clone().pat;
+    let mut param_type_ann: Box<TsType> = Box::new(TsType::TsKeywordType(TsKeywordType {
+        span: Span {
+            lo: BytePos::DUMMY,
+            hi: BytePos::DUMMY,
+            ctxt: SyntaxContext::default(),
+        },
+        kind: TsKeywordTypeKind::TsUnknownKeyword,
+    }));
+    if param_pat.is_ident() {
+        let param_ident = param_pat.ident().unwrap();
+        let param_type_ann_wraped = param_ident.type_ann.unwrap();
+        param_type_ann = param_type_ann_wraped.type_ann;
+    } else if param_pat.is_expr() {
+        let param_expr = param_pat.expr().unwrap();
+    }
+
     if param_type_ann.is_ts_keyword_type() {
         return param_type_ann.ts_keyword_type().unwrap().kind;
     } else {
         return TsKeywordTypeKind::TsUnknownKeyword;
     }
 }
+
+fn get_param_name(param: Param) -> String {
+    let param_pat = param.pat;
+    if param_pat.is_ident() {
+        return param_pat.ident().unwrap().sym.to_string();
+    } else {
+        return "unknown".to_string();
+    }
+}
 pub fn get_function_params(params: Vec<Param>) -> Vec<ParamAct> {
     let mut params_act: Vec<ParamAct> = vec![];
     for param in params {
         let param_type_id = get_param_type_id(&param);
-        let param_name = param.pat.ident().unwrap().sym.to_string();
+        let param_name = get_param_name(param);
         params_act.push(ParamAct {
             name: param_name,
             act_type: get_typeact_from_typeid(param_type_id),
@@ -183,8 +202,14 @@ pub fn process_file(file_path: PathBuf) -> Result<(), String> {
 
     let fm = cm.load_file(&file_path).expect("failed to load ts file");
     let lexer = Lexer::new(
-        Syntax::Typescript(Default::default()),
-        Default::default(),
+        Syntax::Typescript(TsConfig {
+            decorators: true,
+            tsx: false,
+            disallow_ambiguous_jsx_like: true,
+            no_early_errors: true,
+            dts: false,
+        }),
+        EsVersion::EsNext,
         StringInput::from(&*fm),
         None,
     );

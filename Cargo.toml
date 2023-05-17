@@ -9,7 +9,7 @@ edition = "2021"
 clap = { version = "4.2.7", features = ["derive"] }
 swc_common = "0.31.10"
 swc_ecma_ast = "0.104.3"
-swc_ecma_parser = "0.134.5"
+swc_ecma_parser = {version ="0.134.5", features= ["typescript"]}
 
 [lib]
 name = "act_lib"
@@ -17,6 +17,6 @@ crate-type = ["cdylib", "rlib"]
 path = "src/lib.rs"
 
 [profile.release]
-lto = true
-strip = true
-opt-level = 3
+# lto = true
+# strip = true
+# opt-level = 3

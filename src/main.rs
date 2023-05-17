@@ -3,6 +3,7 @@ use clap::Parser;
 use std::{
     fs,
     path::PathBuf,
+    println,
     thread::{self, spawn},
 };
 
@@ -29,8 +30,14 @@ fn main() {
         thread::Builder::new()
             .name(file_path.to_string_lossy().to_string())
             .spawn(move || process_file(file_path).unwrap_or(()))
-            .unwrap()
-            .join();
+            .unwrap_or_else(|err| {
+                println!("{:?}", err);
+                panic!();
+            })
+            .join()
+            .unwrap_or_else(|err| {
+                println!("{:?}", err);
+            });
     }
 }
 
