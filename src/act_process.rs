@@ -71,7 +71,11 @@ pub fn get_function_params(params: Vec<Param>) -> Vec<ParamAct> {
 }
 
 pub fn get_function_act(function_name: String, function: Box<Function>) -> FunctionAct {
-    let function_body_start = function.body.unwrap().span.lo.0;
+    if function.body.is_none() {
+        panic!("Function body is empty get_function_act should not be called");
+    }
+    let function_body = function.body.unwrap();
+    let function_body_start = function_body.span.lo.0;
     let function_act: FunctionAct = FunctionAct {
         name: function_name,
         params: get_function_params(function.params),
@@ -91,16 +95,24 @@ pub fn get_function_patches(function_act: FunctionAct) -> Vec<PatchAct> {
 
 pub fn process_function_decl(fn_decl: FnDecl) -> Vec<PatchAct> {
     let function_name = fn_decl.ident.sym.to_string();
-    let function_act = get_function_act(function_name, fn_decl.function);
-    let function_patches: Vec<PatchAct> = get_function_patches(function_act);
-    return function_patches;
+    if fn_decl.function.body.is_some() {
+        let function_act = get_function_act(function_name, fn_decl.function);
+        let function_patches: Vec<PatchAct> = get_function_patches(function_act);
+        return function_patches;
+    } else {
+        return vec![];
+    }
 }
 
 pub fn process_function_expr(fn_expr: FnExpr) -> Vec<PatchAct> {
     let function_name = fn_expr.ident.unwrap().sym.to_string();
-    let function_act = get_function_act(function_name, fn_expr.function);
-    let function_patches: Vec<PatchAct> = get_function_patches(function_act);
-    return function_patches;
+    if fn_expr.function.body.is_some() {
+        let function_act = get_function_act(function_name, fn_expr.function);
+        let function_patches: Vec<PatchAct> = get_function_patches(function_act);
+        return function_patches;
+    } else {
+        return vec![];
+    }
 }
 
 pub fn get_class_act(class_decl: ClassDecl) -> ClassAct {
@@ -111,7 +123,13 @@ pub fn get_class_act(class_decl: ClassDecl) -> ClassAct {
     for class_prop in class_props {
         if class_prop.is_method() {
             let method = class_prop.method().unwrap();
-            let function_act = get_function_act("TODO".to_owned(), method.function);
+            let method_key = method.key;
+            let mut method_name: String = "unknownName".to_string();
+            if method_key.is_ident() {
+                let method_key_ident = method_key.ident().unwrap();
+                method_name = method_key_ident.sym.to_string();
+            }
+            let function_act = get_function_act(method_name, method.function);
             let method_act: MethodAct = MethodAct {
                 function: function_act,
             };
