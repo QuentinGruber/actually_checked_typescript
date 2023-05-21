@@ -1,6 +1,6 @@
 use act_lib::{act_process::process_file, args_parser::ActArgs};
 use clap::Parser;
-use std::{fs, path::PathBuf, println, thread};
+use std::{fs, path::PathBuf, println, thread, time::Instant};
 
 fn get_files_paths(folder_path: String) -> Vec<PathBuf> {
     let files = fs::read_dir(folder_path).expect("Unable to read directory");
@@ -23,6 +23,7 @@ fn get_files_paths(folder_path: String) -> Vec<PathBuf> {
 }
 
 fn main() {
+    let start_time = Instant::now();
     let args = ActArgs::parse();
     let folder_path = args.folder_path;
     let files = get_files_paths(folder_path);
@@ -39,6 +40,10 @@ fn main() {
                 println!("{:?}", err);
             });
     }
+    let duration = start_time.elapsed();
+    let secs = duration.as_secs();
+    let ns = duration.as_nanos();
+    println!("Act done in {}.{:09} secs", secs, ns)
 }
 
 //TODO: test fonctionnel
