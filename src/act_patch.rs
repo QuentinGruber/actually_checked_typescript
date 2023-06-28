@@ -84,7 +84,20 @@ pub fn apply_patches(patches: Vec<PatchAct>, file_path: PathBuf) -> Result<(), S
         buffer.splice(pos..pos, patch.patch);
         patch_index_helper.register_patched_index(patch.byte_pos, patch_len)
     }
-    let patched_file_path: PathBuf = file_path.with_extension("checked.ts");
-    fs::write(patched_file_path, buffer).unwrap();
+    let args = ActArgs::parse();
+    let out_folder_path = args.out_folder_path;
+
+    let mut patched_file_path = file_path.clone();
+    let patched_file_path_without_prefix = patched_file_path
+        .strip_prefix(patched_file_path.parent().unwrap())
+        .unwrap();
+    println!("{}", patched_file_path_without_prefix.to_str().unwrap());
+    println!("{}", patched_file_path.to_str().unwrap());
+    // fs::create_dir_all(patched_file_path).unwrap_or_else(|err| {
+    //     println!("{:?}", err);
+    //     panic!("Fail to create out_folder_path");
+    // });
+    // let patched_file_path: PathBuf = file_path.file_name();
+    // fs::write(patched_file_path, buffer).unwrap();
     Ok(())
 }
