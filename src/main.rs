@@ -26,6 +26,7 @@ fn main() {
     let folder_path = args.folder_path;
     let files = get_files_paths(folder_path);
     for file_path in files {
+        // TODO: bench single thread vs multi thread
         thread::Builder::new()
             .name(file_path.to_string_lossy().to_string())
             .spawn(move || process_file(file_path).unwrap_or(()))
@@ -46,9 +47,41 @@ fn main() {
 //TODO: test fonctionnel
 #[cfg(test)]
 mod tests {
+    use act_lib::args_parser::ActArgs;
+
+    use super::process_file;
+    use std::{fs, path::PathBuf, println, thread, time::Instant};
 
     #[test]
-    fn mdr_test() {
-        assert_eq!(1, 1)
+    fn simple_function_test() {
+        // create tests folder if not exists
+        fs::create_dir("tests").unwrap_or_else(|err| {
+            println!("{:?}", err);
+            panic!();
+        });
+        // something like that
+        // ActArgs::parse_from(&["act", "-f", "tests"]);
+        // create simple_function.ts file
+        let file_path = PathBuf::from("tests/simple_function.ts");
+        let file_data = r#"
+        function test(a: string, b: number): string {
+            return a + b;
+        }"#;
+        let expected_result_file_data = r#"
+        function test(a: string, b: number): string {
+            return a + b;
+        }"#;
+        fs::write(&file_path, file_data).unwrap_or_else(|err| {
+            println!("{:?}", err);
+            panic!();
+        });
+        process_file(file_path.clone()).unwrap_or(());
+        // change file_path root folder path to out_folder_path
+        let result = fs::read_to_string(&file_path).unwrap_or_else(|err| {
+            println!("{:?}", err);
+            panic!();
+        });
+
+        assert!(result == expected_result_file_data)
     }
 }
