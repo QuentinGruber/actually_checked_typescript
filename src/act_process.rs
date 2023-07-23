@@ -21,7 +21,7 @@ pub fn get_typeact_from_typeid(typeid: TsKeywordTypeKind) -> TypeAct {
         return TypeAct::String;
     };
 
-    return TypeAct::Unknown;
+    TypeAct::Unknown
 }
 
 pub fn get_param_type_id(param: &Param) -> TsKeywordTypeKind {
@@ -42,22 +42,22 @@ pub fn get_param_type_id(param: &Param) -> TsKeywordTypeKind {
         let param_type_ann_wraped = param_ident.type_ann.unwrap();
         param_type_ann = param_type_ann_wraped.type_ann;
     } else if param_pat.is_expr() {
-        let param_expr = param_pat.expr().unwrap();
+        let _param_expr = param_pat.expr().unwrap();
     }
 
     if param_type_ann.is_ts_keyword_type() {
-        return param_type_ann.ts_keyword_type().unwrap().kind;
+        param_type_ann.ts_keyword_type().unwrap().kind
     } else {
-        return TsKeywordTypeKind::TsUnknownKeyword;
+        TsKeywordTypeKind::TsUnknownKeyword
     }
 }
 
 fn get_param_name(param: Param) -> String {
     let param_pat = param.pat;
     if param_pat.is_ident() {
-        return param_pat.ident().unwrap().sym.to_string();
+        param_pat.ident().unwrap().sym.to_string()
     } else {
-        return "unknown".to_string();
+        "unknown".to_string()
     }
 }
 pub fn get_function_params(params: Vec<Param>) -> Vec<ParamAct> {
@@ -70,7 +70,7 @@ pub fn get_function_params(params: Vec<Param>) -> Vec<ParamAct> {
             act_type: get_typeact_from_typeid(param_type_id),
         })
     }
-    return params_act;
+    params_act
 }
 
 pub fn get_function_act(function_name: String, function: Box<Function>) -> FunctionAct {
@@ -84,7 +84,7 @@ pub fn get_function_act(function_name: String, function: Box<Function>) -> Funct
         params: get_function_params(function.params),
         body_start: function_body_start,
     };
-    return function_act;
+    function_act
 }
 
 pub fn get_function_patches(function_act: FunctionAct) -> Vec<PatchAct> {
@@ -93,7 +93,7 @@ pub fn get_function_patches(function_act: FunctionAct) -> Vec<PatchAct> {
         function_act.params,
         function_act.body_start,
     ));
-    return patches;
+    patches
 }
 
 pub fn process_function_decl(fn_decl: FnDecl) -> Vec<PatchAct> {
@@ -101,9 +101,9 @@ pub fn process_function_decl(fn_decl: FnDecl) -> Vec<PatchAct> {
     if fn_decl.function.body.is_some() {
         let function_act = get_function_act(function_name, fn_decl.function);
         let function_patches: Vec<PatchAct> = get_function_patches(function_act);
-        return function_patches;
+        function_patches
     } else {
-        return vec![];
+        vec![]
     }
 }
 
@@ -112,9 +112,9 @@ pub fn process_function_expr(fn_expr: FnExpr) -> Vec<PatchAct> {
     if fn_expr.function.body.is_some() {
         let function_act = get_function_act(function_name, fn_expr.function);
         let function_patches: Vec<PatchAct> = get_function_patches(function_act);
-        return function_patches;
+        function_patches
     } else {
-        return vec![];
+        vec![]
     }
 }
 
@@ -145,17 +145,17 @@ pub fn get_class_act(class_decl: ClassDecl) -> ClassAct {
         name: class_name,
         methods: methods_act,
     };
-    return class_act;
+    class_act
 }
 
 pub fn get_class_patches(class_act: ClassAct) -> Vec<PatchAct> {
     let mut patches: Vec<PatchAct> = vec![];
     patches.extend(get_constructor_patches(&class_act));
     patches.extend(get_methods_patches(class_act));
-    return patches;
+    patches
 }
 
-fn get_constructor_patches(class_act: &ClassAct) -> Vec<PatchAct> {
+fn get_constructor_patches(_class_act: &ClassAct) -> Vec<PatchAct> {
     // TODO: get constructor patch
     vec![]
 }
@@ -168,19 +168,19 @@ fn get_methods_patches(class_act: ClassAct) -> Vec<PatchAct> {
             method.function.body_start,
         ));
     }
-    return patches;
+    patches
 }
 
 pub fn process_class_decl(class_decl: ClassDecl) -> Vec<PatchAct> {
     let class_act = get_class_act(class_decl);
     let class_patches: Vec<PatchAct> = get_class_patches(class_act);
-    return class_patches;
+    class_patches
 }
 
 pub fn process_decl(decl: Decl) -> Vec<PatchAct> {
     if decl.is_fn_decl() {
         let fn_decl = decl.fn_decl().unwrap();
-        return process_function_decl(fn_decl);
+        process_function_decl(fn_decl)
     } else if decl.is_class() {
         let class_decl = decl.class().unwrap();
         return process_class_decl(class_decl);
@@ -203,7 +203,7 @@ pub fn process_module_items(module_items: Vec<ModuleItem>) -> Vec<PatchAct> {
                     let fn_expr = expr.fn_expr().unwrap();
                     patches.extend(process_function_expr(fn_expr));
                 } else if expr.is_arrow() {
-                    let arrow_expr = expr.arrow().unwrap();
+                    let _arrow_expr = expr.arrow().unwrap();
                     // TODO
                 }
             }
@@ -216,7 +216,7 @@ pub fn process_module_items(module_items: Vec<ModuleItem>) -> Vec<PatchAct> {
             }
         }
     }
-    return patches;
+    patches
 }
 
 pub fn process_file(file_path: PathBuf) -> Result<(), String> {

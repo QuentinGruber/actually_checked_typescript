@@ -53,7 +53,7 @@ pub fn gen_param_type_check_patch(param: ParamAct) -> String {
     "#,
         param.name, param_ts_type, patch_body
     );
-    return patch_string;
+    patch_string
 }
 
 pub fn get_function_param_patch(param: ParamAct, body_start: u32) -> PatchAct {
@@ -72,7 +72,7 @@ pub fn get_function_params_patches(params: Vec<ParamAct>, body_start: u32) -> Ve
     {
         params_patches.push(get_function_param_patch(param, body_start));
     }
-    return params_patches;
+    params_patches
 }
 
 pub fn apply_patches(patches: Vec<PatchAct>, file_path: PathBuf) -> Result<(), String> {

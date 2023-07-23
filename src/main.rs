@@ -17,7 +17,7 @@ fn get_files_paths(folder_path: String) -> Vec<PathBuf> {
             files_to_process.extend(get_files_paths(entry.path().to_str().unwrap().to_string()));
         }
     }
-    return files_to_process;
+    files_to_process
 }
 
 fn main() {
@@ -47,10 +47,10 @@ fn main() {
 //TODO: test fonctionnel
 #[cfg(test)]
 mod tests {
-    use act_lib::args_parser::ActArgs;
+    
 
     use super::process_file;
-    use std::{fs, path::PathBuf, println, thread, time::Instant};
+    use std::{fs, path::PathBuf, println};
 
     #[test]
     fn simple_function_test() {

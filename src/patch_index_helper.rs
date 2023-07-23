@@ -28,7 +28,7 @@ impl PatchIndexHelper {
                 drifted_index += index_modify.size;
             }
         }
-        return drifted_index;
+        drifted_index
     }
 }
 
