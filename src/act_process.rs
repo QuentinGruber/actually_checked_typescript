@@ -36,6 +36,9 @@ pub fn get_param_type_id(param: &Param) -> TsKeywordTypeKind {
     }));
     if param_pat.is_ident() {
         let param_ident = param_pat.ident().unwrap();
+        if param_ident.type_ann.is_none() {
+            return TsKeywordTypeKind::TsUnknownKeyword;
+        }
         let param_type_ann_wraped = param_ident.type_ann.unwrap();
         param_type_ann = param_type_ann_wraped.type_ann;
     } else if param_pat.is_expr() {
@@ -129,11 +132,13 @@ pub fn get_class_act(class_decl: ClassDecl) -> ClassAct {
                 let method_key_ident = method_key.ident().unwrap();
                 method_name = method_key_ident.sym.to_string();
             }
-            let function_act = get_function_act(method_name, method.function);
-            let method_act: MethodAct = MethodAct {
-                function: function_act,
-            };
-            methods_act.push(method_act)
+            if method.function.body.is_some() {
+                let function_act = get_function_act(method_name, method.function);
+                let method_act: MethodAct = MethodAct {
+                    function: function_act,
+                };
+                methods_act.push(method_act)
+            }
         }
     }
     let class_act: ClassAct = ClassAct {
