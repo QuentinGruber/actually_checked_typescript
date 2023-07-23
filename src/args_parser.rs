@@ -9,7 +9,6 @@ pub struct ActArgs {
     pub folder_path: String,
 
     #[arg(short, long, default_value = "act_out")]
-    // TODO make it optional and default to /act_out
     pub out_folder_path: String,
 
     #[arg(short, long)]
