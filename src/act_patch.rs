@@ -86,18 +86,26 @@ pub fn apply_patches(patches: Vec<PatchAct>, file_path: PathBuf) -> Result<(), S
     }
     let args = ActArgs::parse();
     let out_folder_path = args.out_folder_path;
+    let in_folder_path = args.folder_path;
 
     let mut patched_file_path = file_path.clone();
-    let patched_file_path_without_prefix = patched_file_path
-        .strip_prefix(patched_file_path.parent().unwrap())
-        .unwrap();
-    println!("{}", patched_file_path_without_prefix.to_str().unwrap());
-    println!("{}", patched_file_path.to_str().unwrap());
-    // fs::create_dir_all(patched_file_path).unwrap_or_else(|err| {
-    //     println!("{:?}", err);
-    //     panic!("Fail to create out_folder_path");
-    // });
-    // let patched_file_path: PathBuf = file_path.file_name();
-    // fs::write(patched_file_path, buffer).unwrap();
+    // remove the first
+    patched_file_path = patched_file_path
+        .strip_prefix(&in_folder_path)
+        .unwrap()
+        .to_path_buf();
+    patched_file_path = PathBuf::from(out_folder_path).join(patched_file_path);
+    let patch_file_path_without_filename = patched_file_path
+        .parent()
+        .unwrap_or_else(|| {
+            println!("Fail to get parent of {:?}", patched_file_path);
+            panic!("Fail to get parent of {:?}", patched_file_path);
+        })
+        .to_path_buf();
+    fs::create_dir_all(patch_file_path_without_filename).unwrap_or_else(|err| {
+        println!("{:?}", err);
+        panic!("Fail to create out_folder_path");
+    });
+    fs::write(patched_file_path, buffer).unwrap();
     Ok(())
 }

@@ -10,9 +10,7 @@ fn get_files_paths(folder_path: String) -> Vec<PathBuf> {
         let file_type = entry.file_type().unwrap();
         if file_type.is_file() {
             let is_ts_file = entry.path().extension().unwrap_or_default() == "ts";
-            // TODO: remove
-            let is_not_checked = !entry.path().to_str().unwrap().contains(".checked");
-            if is_ts_file && is_not_checked {
+            if is_ts_file {
                 files_to_process.push(entry.path())
             }
         } else if file_type.is_dir() {
@@ -41,9 +39,8 @@ fn main() {
             });
     }
     let duration = start_time.elapsed();
-    let secs = duration.as_secs();
-    let ns = duration.as_nanos();
-    println!("Act done in {}.{:09} secs", secs, ns)
+    let ms = duration.as_millis();
+    println!("Act done in {}ms", ms)
 }
 
 //TODO: test fonctionnel

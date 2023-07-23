@@ -145,7 +145,7 @@ pub fn get_class_act(class_decl: ClassDecl) -> ClassAct {
 
 pub fn get_class_patches(class_act: ClassAct) -> Vec<PatchAct> {
     let mut patches: Vec<PatchAct> = vec![];
-    // patches.extend(get_constructor_patches(&class_act));
+    patches.extend(get_constructor_patches(&class_act));
     patches.extend(get_methods_patches(class_act));
     return patches;
 }
