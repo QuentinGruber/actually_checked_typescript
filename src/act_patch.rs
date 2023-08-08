@@ -2,7 +2,8 @@ use std::{fs, path::PathBuf, str::FromStr};
 
 use crate::{
     act_structs::{
-        get_js_constructor_from_acttype, get_ts_type_from_acttype, ParamAct, PatchAct, TypeAct,
+        get_js_constructor_from_acttype, get_ts_type_from_acttype,
+        get_typeinfo_operator_from_acttype, ParamAct, PatchAct, TypeAct,
     },
     args_parser::ActArgs,
     patch_index_helper::PatchIndexHelper,
@@ -45,13 +46,14 @@ pub fn gen_param_type_check_patch(param: ParamAct) -> String {
         PatchType::Error => format!(r#"throw {};"#, log_message),
         PatchType::Warning => format!(r#"console.warn({});"#, log_message),
     };
+    let typeinfo_operator = get_typeinfo_operator_from_acttype(&param.act_type);
     let patch_string = format!(
         r#"
-    if(typeof {} !== '{}'){{
+    if({} {} !== '{}'){{
     {}
     }}
     "#,
-        param.name, param_ts_type, patch_body
+        typeinfo_operator, param.name, param_ts_type, patch_body
     );
     patch_string
 }

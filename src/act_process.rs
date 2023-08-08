@@ -8,23 +8,25 @@ use swc_ecma_ast::{
 };
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsConfig};
 
+use crate::act_structs::get_acttype_from_string;
 use crate::{
     act_patch::{apply_patches, get_function_params_patches},
     act_structs::{ClassAct, FunctionAct, MethodAct, ParamAct, PatchAct, TypeAct},
 };
 
 pub fn get_typeact_from_typeid(typeid: TsKeywordTypeKind) -> TypeAct {
-    if typeid == TsKeywordTypeKind::TsNumberKeyword {
-        return TypeAct::Number;
-    };
-    if typeid == TsKeywordTypeKind::TsStringKeyword {
-        return TypeAct::String;
-    };
-
-    TypeAct::Unknown
+    match typeid {
+        TsKeywordTypeKind::TsBooleanKeyword => TypeAct::Boolean,
+        TsKeywordTypeKind::TsNumberKeyword => TypeAct::Number,
+        TsKeywordTypeKind::TsStringKeyword => TypeAct::String,
+        TsKeywordTypeKind::TsUnknownKeyword => TypeAct::Unknown,
+        TsKeywordTypeKind::TsBigIntKeyword => TypeAct::BigInt,
+        TsKeywordTypeKind::TsSymbolKeyword => TypeAct::Symbol,
+        _ => TypeAct::Unknown,
+    }
 }
 
-pub fn get_param_type_id(param: &Param) -> TsKeywordTypeKind {
+pub fn get_param_type_ann(param: &Param) -> Result<Box<TsType>, String> {
     let param_pat = param.clone().pat;
     let mut param_type_ann: Box<TsType> = Box::new(TsType::TsKeywordType(TsKeywordType {
         span: Span {
@@ -34,10 +36,11 @@ pub fn get_param_type_id(param: &Param) -> TsKeywordTypeKind {
         },
         kind: TsKeywordTypeKind::TsUnknownKeyword,
     }));
+
     if param_pat.is_ident() {
         let param_ident = param_pat.ident().unwrap();
         if param_ident.type_ann.is_none() {
-            return TsKeywordTypeKind::TsUnknownKeyword;
+            return Err(String::from("param_ident.type_ann.is_none()"));
         }
         let param_type_ann_wraped = param_ident.type_ann.unwrap();
         param_type_ann = param_type_ann_wraped.type_ann;
@@ -45,10 +48,22 @@ pub fn get_param_type_id(param: &Param) -> TsKeywordTypeKind {
         let _param_expr = param_pat.expr().unwrap();
     }
 
+    Ok(param_type_ann)
+}
+pub fn get_param_type_act(param: &Param) -> TypeAct {
+    let param_type_ann = get_param_type_ann(param).unwrap();
     if param_type_ann.is_ts_keyword_type() {
-        param_type_ann.ts_keyword_type().unwrap().kind
+        get_typeact_from_typeid(param_type_ann.ts_keyword_type().unwrap().kind)
+    } else if param_type_ann.is_ts_type_ref() {
+        let type_ref = param_type_ann.ts_type_ref().unwrap();
+        if type_ref.type_name.is_ident() {
+            let type_ref_type_name = type_ref.type_name.ident().unwrap().sym.to_string();
+            get_acttype_from_string(&type_ref_type_name)
+        } else {
+            TypeAct::Unknown
+        }
     } else {
-        TsKeywordTypeKind::TsUnknownKeyword
+        TypeAct::Unknown
     }
 }
 
@@ -63,11 +78,11 @@ fn get_param_name(param: Param) -> String {
 pub fn get_function_params(params: Vec<Param>) -> Vec<ParamAct> {
     let mut params_act: Vec<ParamAct> = vec![];
     for param in params {
-        let param_type_id = get_param_type_id(&param);
+        let param_type_act = get_param_type_act(&param);
         let param_name = get_param_name(param);
         params_act.push(ParamAct {
             name: param_name,
-            act_type: get_typeact_from_typeid(param_type_id),
+            act_type: param_type_act,
         })
     }
     params_act
