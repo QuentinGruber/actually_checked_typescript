@@ -47,13 +47,25 @@ pub fn gen_param_type_check_patch(param: ParamAct) -> String {
         PatchType::Warning => format!(r#"console.warn({});"#, log_message),
     };
     let typeinfo_operator = get_typeinfo_operator_from_acttype(&param.act_type);
+
+    let conditional_string = match typeinfo_operator.as_str() {
+        "instanceof" => format!(
+            r#"!({} {} {})"#,
+            param.name, typeinfo_operator, param_ts_type
+        ),
+        "typeof" => format!(
+            r#"{} {} !== '{}'"#,
+            typeinfo_operator, param.name, param_ts_type
+        ),
+        _ => "true".to_string(),
+    };
     let patch_string = format!(
         r#"
-    if({} {} !== '{}'){{
+    if({}){{
     {}
     }}
     "#,
-        typeinfo_operator, param.name, param_ts_type, patch_body
+        conditional_string, patch_body
     );
     patch_string
 }
