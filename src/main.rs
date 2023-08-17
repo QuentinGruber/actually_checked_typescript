@@ -44,16 +44,15 @@ fn main() {
     println!("Act done in {}ms", ms)
 }
 
-//TODO: test fonctionnel
 #[cfg(test)]
 mod tests {
-    
 
     use super::process_file;
     use std::{fs, path::PathBuf, println};
 
     #[test]
     fn simple_function_test() {
+        // TODO:
         // create tests folder if not exists
         fs::create_dir("tests").unwrap_or_else(|err| {
             println!("{:?}", err);
