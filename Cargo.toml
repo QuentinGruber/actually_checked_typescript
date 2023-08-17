@@ -1,5 +1,5 @@
 [package]
-name = "acts"
+name = "actypes"
 version = "0.1.0"
 edition = "2021"
 description = "Add runtime type checking to your Typescript code"
