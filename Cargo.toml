@@ -2,7 +2,7 @@
 name = "acts"
 version = "0.1.0"
 edition = "2021"
-description = ""
+description = "Add runtime type checking to your Typescript code"
 authors = ["QuentinGruber"]
 license = "MIT"
 
