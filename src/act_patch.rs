@@ -29,14 +29,18 @@ impl FromStr for PatchType {
     }
 }
 
-pub fn gen_param_type_check_patch(param: ParamAct) -> String {
+pub fn gen_param_type_check_patch(
+    param: ParamAct,
+    symbol_name: &String,
+    file_name: &String,
+) -> String {
     let args = ActArgs::parse();
     let patch_type = args.patch_type;
     let param_ts_type = get_ts_type_from_acttype(&param.act_type);
     let param_js_constructor = get_js_constructor_from_acttype(&param.act_type);
     let log_message = format!(
-        r#"`{} isn't of type {} but of type ${{typeof {}}}`"#,
-        param.name, param_ts_type, param.name
+        r#"`[{}=>{}] {} isn't of type {} but of type ${{typeof {}}}`"#,
+        file_name, symbol_name, param.name, param_ts_type, param.name
     );
     let patch_body = match patch_type {
         PatchType::Fix => format!(
@@ -70,21 +74,36 @@ pub fn gen_param_type_check_patch(param: ParamAct) -> String {
     patch_string
 }
 
-pub fn get_function_param_patch(param: ParamAct, body_start: u32) -> PatchAct {
-    let patch_string = gen_param_type_check_patch(param);
+pub fn get_function_param_patch(
+    param: ParamAct,
+    body_start: u32,
+    symbol_name: &String,
+    file_name: &String,
+) -> PatchAct {
+    let patch_string = gen_param_type_check_patch(param, symbol_name, file_name);
     return PatchAct {
         byte_pos: body_start,
         patch: patch_string.as_bytes().to_vec(),
     };
 }
 
-pub fn get_function_params_patches(params: Vec<ParamAct>, body_start: u32) -> Vec<PatchAct> {
+pub fn get_function_params_patches(
+    params: Vec<ParamAct>,
+    body_start: u32,
+    symbol_name: String,
+    file_name: String,
+) -> Vec<PatchAct> {
     let mut params_patches: Vec<PatchAct> = vec![];
     for param in params
         .into_iter()
         .filter(|x| x.act_type != TypeAct::Unknown)
     {
-        params_patches.push(get_function_param_patch(param, body_start));
+        params_patches.push(get_function_param_patch(
+            param,
+            body_start,
+            &symbol_name,
+            &file_name,
+        ));
     }
     params_patches
 }

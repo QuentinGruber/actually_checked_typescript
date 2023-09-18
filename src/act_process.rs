@@ -1,4 +1,5 @@
-use std::{path::PathBuf, println, vec};
+use std::path::PathBuf;
+use std::{println, vec};
 
 use swc_common::{sync::Lrc, Span};
 use swc_common::{BytePos, SourceMap, SyntaxContext};
@@ -102,31 +103,33 @@ pub fn get_function_act(function_name: String, function: Box<Function>) -> Funct
     function_act
 }
 
-pub fn get_function_patches(function_act: FunctionAct) -> Vec<PatchAct> {
+pub fn get_function_patches(function_act: FunctionAct, file_name: &PathBuf) -> Vec<PatchAct> {
     let mut patches: Vec<PatchAct> = vec![];
     patches.extend(get_function_params_patches(
         function_act.params,
         function_act.body_start,
+        function_act.name,
+        file_name.to_str().unwrap().to_string(),
     ));
     patches
 }
 
-pub fn process_function_decl(fn_decl: FnDecl) -> Vec<PatchAct> {
+pub fn process_function_decl(fn_decl: FnDecl, file_path: &PathBuf) -> Vec<PatchAct> {
     let function_name = fn_decl.ident.sym.to_string();
     if fn_decl.function.body.is_some() {
         let function_act = get_function_act(function_name, fn_decl.function);
-        let function_patches: Vec<PatchAct> = get_function_patches(function_act);
+        let function_patches: Vec<PatchAct> = get_function_patches(function_act, file_path);
         function_patches
     } else {
         vec![]
     }
 }
 
-pub fn process_function_expr(fn_expr: FnExpr) -> Vec<PatchAct> {
+pub fn process_function_expr(fn_expr: FnExpr, file_path: &PathBuf) -> Vec<PatchAct> {
     let function_name = fn_expr.ident.unwrap().sym.to_string();
     if fn_expr.function.body.is_some() {
         let function_act = get_function_act(function_name, fn_expr.function);
-        let function_patches: Vec<PatchAct> = get_function_patches(function_act);
+        let function_patches: Vec<PatchAct> = get_function_patches(function_act, file_path);
         function_patches
     } else {
         vec![]
@@ -163,60 +166,62 @@ pub fn get_class_act(class_decl: ClassDecl) -> ClassAct {
     class_act
 }
 
-pub fn get_class_patches(class_act: ClassAct) -> Vec<PatchAct> {
+pub fn get_class_patches(class_act: ClassAct, file_path: &PathBuf) -> Vec<PatchAct> {
     let mut patches: Vec<PatchAct> = vec![];
-    patches.extend(get_constructor_patches(&class_act));
-    patches.extend(get_methods_patches(class_act));
+    patches.extend(get_constructor_patches(&class_act, file_path));
+    patches.extend(get_methods_patches(class_act, file_path));
     patches
 }
 
-fn get_constructor_patches(_class_act: &ClassAct) -> Vec<PatchAct> {
+fn get_constructor_patches(_class_act: &ClassAct, _file_path: &PathBuf) -> Vec<PatchAct> {
     // TODO: get constructor patch
     vec![]
 }
 
-fn get_methods_patches(class_act: ClassAct) -> Vec<PatchAct> {
+fn get_methods_patches(class_act: ClassAct, file_path: &PathBuf) -> Vec<PatchAct> {
     let mut patches: Vec<PatchAct> = vec![];
     for method in class_act.methods {
         patches.extend(get_function_params_patches(
             method.function.params,
             method.function.body_start,
+            method.function.name,
+            file_path.to_str().unwrap().to_string(),
         ));
     }
     patches
 }
 
-pub fn process_class_decl(class_decl: ClassDecl) -> Vec<PatchAct> {
+pub fn process_class_decl(class_decl: ClassDecl, file_path: &PathBuf) -> Vec<PatchAct> {
     let class_act = get_class_act(class_decl);
-    let class_patches: Vec<PatchAct> = get_class_patches(class_act);
+    let class_patches: Vec<PatchAct> = get_class_patches(class_act, file_path);
     class_patches
 }
 
-pub fn process_decl(decl: Decl) -> Vec<PatchAct> {
+pub fn process_decl(decl: Decl, file_path: &PathBuf) -> Vec<PatchAct> {
     if decl.is_fn_decl() {
         let fn_decl = decl.fn_decl().unwrap();
-        process_function_decl(fn_decl)
+        process_function_decl(fn_decl, file_path)
     } else if decl.is_class() {
         let class_decl = decl.class().unwrap();
-        return process_class_decl(class_decl);
+        return process_class_decl(class_decl, file_path);
     } else {
         return vec![];
     }
 }
 
-pub fn process_module_items(module_items: Vec<ModuleItem>) -> Vec<PatchAct> {
+pub fn process_module_items(module_items: Vec<ModuleItem>, file_path: &PathBuf) -> Vec<PatchAct> {
     let mut patches: Vec<PatchAct> = vec![];
     for item in module_items {
         if item.is_stmt() {
             let stmt = item.stmt().unwrap();
             if stmt.is_decl() {
                 let decl = stmt.decl().unwrap();
-                patches.extend(process_decl(decl));
+                patches.extend(process_decl(decl, file_path));
             } else if stmt.is_expr() {
                 let expr = stmt.expr().unwrap().expr;
                 if expr.is_fn_expr() {
                     let fn_expr = expr.fn_expr().unwrap();
-                    patches.extend(process_function_expr(fn_expr));
+                    patches.extend(process_function_expr(fn_expr, file_path));
                 } else if expr.is_arrow() {
                     let _arrow_expr = expr.arrow().unwrap();
                     // TODO
@@ -227,7 +232,7 @@ pub fn process_module_items(module_items: Vec<ModuleItem>) -> Vec<PatchAct> {
             if module_decl.is_export_decl() {
                 let export_decl = module_decl.export_decl().unwrap();
                 let decl = export_decl.decl;
-                patches.extend(process_decl(decl));
+                patches.extend(process_decl(decl, file_path));
             }
         }
     }
@@ -257,7 +262,7 @@ pub fn process_file(file_path: PathBuf) -> Result<(), String> {
     let module = parser
         .parse_typescript_module()
         .expect("failed to parser module");
-    let patches = process_module_items(module.body);
+    let patches = process_module_items(module.body, &file_path);
 
     apply_patches(patches, file_path).unwrap();
 
