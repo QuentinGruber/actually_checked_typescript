@@ -226,7 +226,10 @@ pub fn process_decl(decl: Decl, file_path: &PathBuf) -> Vec<PatchAct> {
     }
 }
 
-pub fn process_module_items(module_items: Vec<ModuleItem>, file_path: &PathBuf) -> Vec<PatchAct> {
+pub fn process_module_items(
+    module_items: Vec<ModuleItem>,
+    file_path: &PathBuf,
+) -> Result<Vec<PatchAct>, String> {
     let mut patches: Vec<PatchAct> = vec![];
     for item in module_items {
         if item.is_stmt() {
@@ -253,7 +256,7 @@ pub fn process_module_items(module_items: Vec<ModuleItem>, file_path: &PathBuf) 
             }
         }
     }
-    patches
+    Ok(patches)
 }
 
 pub fn process_file(file_path: PathBuf) -> Result<(), String> {
@@ -276,10 +279,23 @@ pub fn process_file(file_path: PathBuf) -> Result<(), String> {
 
     let mut parser = Parser::new_from(lexer);
 
-    let module = parser
-        .parse_typescript_module()
-        .expect("failed to parser module");
-    let patches = process_module_items(module.body, &file_path);
+    let module_wrap = parser.parse_typescript_module();
+    let mut patches: Vec<PatchAct> = vec![];
+    if module_wrap.is_ok() {
+        let module = module_wrap.unwrap();
+        let module_item_wrap = process_module_items(module.body, &file_path);
+        if module_item_wrap.is_ok() {
+            patches = module_item_wrap.unwrap();
+        } else if module_item_wrap.is_err() {
+            println!("error processing file {}", file_path.to_str().unwrap());
+            let err = module_item_wrap.err().unwrap();
+            println!("{:?}", err);
+        }
+    } else if module_wrap.is_err() {
+        println!("error parsing file {}", file_path.to_str().unwrap());
+        let err = module_wrap.err().unwrap();
+        println!("{:?}", err.into_kind());
+    }
 
     apply_patches(patches, file_path).unwrap();
 
