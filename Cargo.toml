@@ -5,6 +5,11 @@ edition = "2021"
 description = "Add runtime type checking to your Typescript code"
 authors = ["QuentinGruber"]
 license = "MIT"
+repository = "https://github.com/QuentinGruber/actually_checked_typescript"
+
+[package.metadata.wix]
+upgrade-guid = "C328052E-DB0A-4A06-B1E3-51AC862BF67E"
+path-guid = "6A029C38-0AF3-4B08-9852-080E7BF1D11A"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -23,3 +28,25 @@ path = "src/lib.rs"
 lto = true
 strip = true
 opt-level = 3
+
+# The profile that 'cargo dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+# Config for 'cargo dist'
+[workspace.metadata.dist]
+# The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.4.3"
+# CI backends to support
+ci = ["github"]
+# The installers to generate for each app
+installers = ["shell", "powershell", "npm", "msi"]
+# Target platforms to build apps for (Rust target-triple syntax)
+targets = ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+# The archive format to use for windows builds (defaults .zip)
+windows-archive = ".tar.gz"
+# The archive format to use for non-windows builds (defaults .tar.xz)
+unix-archive = ".tar.gz"
+# Publish jobs to run in CI
+pr-run-mode = "plan"
