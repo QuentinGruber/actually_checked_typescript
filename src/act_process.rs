@@ -157,6 +157,29 @@ pub fn get_class_act(class_decl: ClassDecl) -> ClassAct {
                 };
                 methods_act.push(method_act)
             }
+        } else if class_prop.is_constructor() {
+            let constructor = class_prop.constructor().unwrap();
+            if constructor.params.is_empty() {
+                continue;
+            }
+            if constructor.body.is_some() {
+                let constructor_body = constructor.body.unwrap();
+                let constructor_body_start = constructor_body.span.lo.0;
+                let mut params: Vec<Param> = vec![];
+                for param in constructor.params {
+                    if param.is_param() {
+                        params.push(param.param().unwrap())
+                    }
+                }
+                let constructor_act: MethodAct = MethodAct {
+                    function: FunctionAct {
+                        name: "constructor".to_string(),
+                        params: get_function_params(params),
+                        body_start: constructor_body_start,
+                    },
+                };
+                methods_act.push(constructor_act)
+            }
         }
     }
     let class_act: ClassAct = ClassAct {
@@ -168,14 +191,8 @@ pub fn get_class_act(class_decl: ClassDecl) -> ClassAct {
 
 pub fn get_class_patches(class_act: ClassAct, file_path: &PathBuf) -> Vec<PatchAct> {
     let mut patches: Vec<PatchAct> = vec![];
-    patches.extend(get_constructor_patches(&class_act, file_path));
     patches.extend(get_methods_patches(class_act, file_path));
     patches
-}
-
-fn get_constructor_patches(_class_act: &ClassAct, _file_path: &PathBuf) -> Vec<PatchAct> {
-    // TODO: get constructor patch
-    vec![]
 }
 
 fn get_methods_patches(class_act: ClassAct, file_path: &PathBuf) -> Vec<PatchAct> {
