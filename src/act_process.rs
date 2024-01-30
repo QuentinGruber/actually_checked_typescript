@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{println, vec};
 
 use swc_common::{sync::Lrc, Span};
@@ -103,7 +103,7 @@ pub fn get_function_act(function_name: String, function: Box<Function>) -> Funct
     function_act
 }
 
-pub fn get_function_patches(function_act: FunctionAct, file_name: &PathBuf) -> Vec<PatchAct> {
+pub fn get_function_patches(function_act: FunctionAct, file_name: &Path) -> Vec<PatchAct> {
     let mut patches: Vec<PatchAct> = vec![];
     patches.extend(get_function_params_patches(
         function_act.params,
@@ -114,7 +114,7 @@ pub fn get_function_patches(function_act: FunctionAct, file_name: &PathBuf) -> V
     patches
 }
 
-pub fn process_function_decl(fn_decl: FnDecl, file_path: &PathBuf) -> Vec<PatchAct> {
+pub fn process_function_decl(fn_decl: FnDecl, file_path: &Path) -> Vec<PatchAct> {
     let function_name = fn_decl.ident.sym.to_string();
     if fn_decl.function.body.is_some() {
         let function_act = get_function_act(function_name, fn_decl.function);
@@ -125,7 +125,7 @@ pub fn process_function_decl(fn_decl: FnDecl, file_path: &PathBuf) -> Vec<PatchA
     }
 }
 
-pub fn process_function_expr(fn_expr: FnExpr, file_path: &PathBuf) -> Vec<PatchAct> {
+pub fn process_function_expr(fn_expr: FnExpr, file_path: &Path) -> Vec<PatchAct> {
     let function_name = fn_expr.ident.unwrap().sym.to_string();
     if fn_expr.function.body.is_some() {
         let function_act = get_function_act(function_name, fn_expr.function);
@@ -189,13 +189,13 @@ pub fn get_class_act(class_decl: ClassDecl) -> ClassAct {
     class_act
 }
 
-pub fn get_class_patches(class_act: ClassAct, file_path: &PathBuf) -> Vec<PatchAct> {
+pub fn get_class_patches(class_act: ClassAct, file_path: &Path) -> Vec<PatchAct> {
     let mut patches: Vec<PatchAct> = vec![];
     patches.extend(get_methods_patches(class_act, file_path));
     patches
 }
 
-fn get_methods_patches(class_act: ClassAct, file_path: &PathBuf) -> Vec<PatchAct> {
+fn get_methods_patches(class_act: ClassAct, file_path: &Path) -> Vec<PatchAct> {
     let mut patches: Vec<PatchAct> = vec![];
     for method in class_act.methods {
         patches.extend(get_function_params_patches(
@@ -208,13 +208,13 @@ fn get_methods_patches(class_act: ClassAct, file_path: &PathBuf) -> Vec<PatchAct
     patches
 }
 
-pub fn process_class_decl(class_decl: ClassDecl, file_path: &PathBuf) -> Vec<PatchAct> {
+pub fn process_class_decl(class_decl: ClassDecl, file_path: &Path) -> Vec<PatchAct> {
     let class_act = get_class_act(class_decl);
     let class_patches: Vec<PatchAct> = get_class_patches(class_act, file_path);
     class_patches
 }
 
-pub fn process_decl(decl: Decl, file_path: &PathBuf) -> Vec<PatchAct> {
+pub fn process_decl(decl: Decl, file_path: &Path) -> Vec<PatchAct> {
     if decl.is_fn_decl() {
         let fn_decl = decl.fn_decl().unwrap();
         process_function_decl(fn_decl, file_path)
@@ -228,7 +228,7 @@ pub fn process_decl(decl: Decl, file_path: &PathBuf) -> Vec<PatchAct> {
 
 pub fn process_module_items(
     module_items: Vec<ModuleItem>,
-    file_path: &PathBuf,
+    file_path: &Path,
 ) -> Result<Vec<PatchAct>, String> {
     let mut patches: Vec<PatchAct> = vec![];
     for item in module_items {

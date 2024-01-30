@@ -32,3 +32,8 @@ impl PatchIndexHelper {
     }
 }
 
+impl Default for PatchIndexHelper {
+    fn default() -> Self {
+        Self::new()
+    }
+}
