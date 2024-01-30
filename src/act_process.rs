@@ -4,8 +4,8 @@ use std::{println, vec};
 use swc_common::{sync::Lrc, Span};
 use swc_common::{BytePos, SourceMap, SyntaxContext};
 use swc_ecma_ast::{
-    ClassDecl, Decl, EsVersion, FnDecl, FnExpr, Function, ModuleItem, Param, TsKeywordType,
-    TsKeywordTypeKind, TsType,
+    ArrowExpr, ClassDecl, Decl, EsVersion, FnDecl, FnExpr, Function, ModuleItem, Param, Pat,
+    TsKeywordType, TsKeywordTypeKind, TsType,
 };
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsConfig};
 
@@ -27,8 +27,9 @@ pub fn get_typeact_from_typeid(typeid: TsKeywordTypeKind) -> TypeAct {
     }
 }
 
-pub fn get_param_type_ann(param: &Param) -> Result<Box<TsType>, String> {
-    let param_pat = param.clone().pat;
+pub fn get_param_type_ann(param_pat: &Pat) -> Result<Box<TsType>, String> {
+    // FIXME: This is a hack, we should not clone
+    let param_pat = param_pat.clone();
     let mut param_type_ann: Box<TsType> = Box::new(TsType::TsKeywordType(TsKeywordType {
         span: Span {
             lo: BytePos::DUMMY,
@@ -55,8 +56,8 @@ pub fn get_param_type_ann(param: &Param) -> Result<Box<TsType>, String> {
 
     Ok(param_type_ann)
 }
-pub fn get_param_type_act(param: &Param) -> TypeAct {
-    let param_type_ann = get_param_type_ann(param).unwrap();
+pub fn get_param_type_act(param_pat: &Pat) -> TypeAct {
+    let param_type_ann = get_param_type_ann(param_pat).unwrap();
     if param_type_ann.is_ts_keyword_type() {
         get_typeact_from_typeid(param_type_ann.ts_keyword_type().unwrap().kind)
     } else if param_type_ann.is_ts_type_ref() {
@@ -72,15 +73,14 @@ pub fn get_param_type_act(param: &Param) -> TypeAct {
     }
 }
 
-fn get_param_name(param: Param) -> String {
-    let param_pat = param.pat;
+fn get_param_name(param_pat: Pat) -> String {
     if param_pat.is_ident() {
         param_pat.ident().unwrap().sym.to_string()
     } else {
         "unknown".to_string()
     }
 }
-pub fn get_function_params(params: Vec<Param>) -> Vec<ParamAct> {
+pub fn get_function_params(params: Vec<Pat>) -> Vec<ParamAct> {
     let mut params_act: Vec<ParamAct> = vec![];
     for param in params {
         let param_type_act = get_param_type_act(&param);
@@ -101,7 +101,7 @@ pub fn get_function_act(function_name: String, function: Box<Function>) -> Funct
     let function_body_start = function_body.span.lo.0;
     let function_act: FunctionAct = FunctionAct {
         name: function_name,
-        params: get_function_params(function.params),
+        params: get_function_params(get_pat_from_param(function.params)),
         body_start: function_body_start,
     };
     function_act
@@ -138,6 +138,22 @@ pub fn process_function_expr(fn_expr: FnExpr, file_path: &Path) -> Vec<PatchAct>
     } else {
         vec![]
     }
+}
+
+pub fn process_function_arrow(arrow_expr: ArrowExpr, file_path: &Path) -> Vec<PatchAct> {
+    let function_body = arrow_expr.body;
+    if function_body.is_block_stmt() {
+        let function_body_block_stmt = function_body.block_stmt().unwrap();
+        let function_body_start = function_body_block_stmt.span.lo.0;
+        let function_act: FunctionAct = FunctionAct {
+            name: "ArrayFunction".to_string(),
+            params: get_function_params(arrow_expr.params),
+            body_start: function_body_start,
+        };
+        let function_patches: Vec<PatchAct> = get_function_patches(function_act, file_path);
+        return function_patches;
+    }
+    vec![]
 }
 
 pub fn get_class_act(class_decl: ClassDecl) -> ClassAct {
@@ -178,7 +194,7 @@ pub fn get_class_act(class_decl: ClassDecl) -> ClassAct {
                 let constructor_act: MethodAct = MethodAct {
                     function: FunctionAct {
                         name: "constructor".to_string(),
-                        params: get_function_params(params),
+                        params: get_function_params(get_pat_from_param(params)),
                         body_start: constructor_body_start,
                     },
                 };
@@ -191,6 +207,14 @@ pub fn get_class_act(class_decl: ClassDecl) -> ClassAct {
         methods: methods_act,
     };
     class_act
+}
+
+pub fn get_pat_from_param(params: Vec<Param>) -> Vec<Pat> {
+    let mut pats: Vec<Pat> = vec![];
+    for param in params {
+        pats.push(param.pat)
+    }
+    pats
 }
 
 pub fn get_class_patches(class_act: ClassAct, file_path: &Path) -> Vec<PatchAct> {
@@ -247,8 +271,8 @@ pub fn process_module_items(
                     let fn_expr = expr.fn_expr().unwrap();
                     patches.extend(process_function_expr(fn_expr, file_path));
                 } else if expr.is_arrow() {
-                    let _arrow_expr = expr.arrow().unwrap();
-                    // TODO
+                    let arrow_expr = expr.arrow().unwrap();
+                    patches.extend(process_function_arrow(arrow_expr, file_path));
                 }
             }
         } else if item.is_module_decl() {
