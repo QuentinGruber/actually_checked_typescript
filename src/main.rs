@@ -26,7 +26,6 @@ fn main() {
     let folder_path = args.folder_path;
     let files = get_files_paths(folder_path);
     for file_path in files {
-        // TODO: bench single thread vs multi thread
         thread::Builder::new()
             .name(file_path.to_string_lossy().to_string())
             .spawn(move || process_file(file_path).unwrap_or(()))
