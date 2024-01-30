@@ -19,7 +19,6 @@ pub struct MethodAct {
 #[derive(Debug)]
 pub struct ClassAct {
     pub name: String,
-    // TODO: constructor
     pub methods: Vec<MethodAct>,
 }
 

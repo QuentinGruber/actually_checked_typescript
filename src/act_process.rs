@@ -50,6 +50,7 @@ pub fn get_param_type_ann(param: &Param) -> Result<Box<TsType>, String> {
         param_type_ann = param_type_ann_wraped.type_ann;
     } else if param_pat.is_expr() {
         let _param_expr = param_pat.expr().unwrap();
+        // TODO:
     }
 
     Ok(param_type_ann)
