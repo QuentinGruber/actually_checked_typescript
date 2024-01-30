@@ -37,9 +37,12 @@ pub fn get_param_type_ann(param: &Param) -> Result<Box<TsType>, String> {
         },
         kind: TsKeywordTypeKind::TsUnknownKeyword,
     }));
-
     if param_pat.is_ident() {
         let param_ident = param_pat.ident().unwrap();
+        if param_ident.optional {
+            // If is optionnal, we skip it
+            return Ok(param_type_ann);
+        }
         if param_ident.type_ann.is_none() {
             return Err(String::from("param_ident.type_ann.is_none()"));
         }
