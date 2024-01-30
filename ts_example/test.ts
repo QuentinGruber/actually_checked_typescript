@@ -55,3 +55,7 @@ export function addMaybe(a: number | undefined, b?: number): number {
   }
   return a + b;
 }
+
+const concat4 = function (a: string, b: string): string {
+  return a + b;
+};

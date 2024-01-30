@@ -5,7 +5,7 @@ use swc_common::{sync::Lrc, Span};
 use swc_common::{BytePos, SourceMap, SyntaxContext};
 use swc_ecma_ast::{
     ArrowExpr, ClassDecl, Decl, EsVersion, FnDecl, FnExpr, Function, ModuleItem, Param, Pat,
-    TsKeywordType, TsKeywordTypeKind, TsType,
+    TsKeywordType, TsKeywordTypeKind, TsType, VarDecl,
 };
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsConfig};
 
@@ -128,7 +128,60 @@ pub fn process_function_decl(fn_decl: FnDecl, file_path: &Path) -> Vec<PatchAct>
         vec![]
     }
 }
-
+pub fn process_var_decl(var_decl: Box<VarDecl>, file_path: &Path) -> Vec<PatchAct> {
+    let var_decl_decls = var_decl.decls;
+    let mut patches: Vec<PatchAct> = vec![];
+    for var_decl_decl in var_decl_decls {
+        let var_decl_decl_name = var_decl_decl.name;
+        let var_decl_decl_init = var_decl_decl.init;
+        if var_decl_decl_init.is_some() {
+            let var_decl_decl_init_wraped = var_decl_decl_init.unwrap();
+            if var_decl_decl_init_wraped.is_fn_expr() {
+                let fn_expr = var_decl_decl_init_wraped.fn_expr().unwrap();
+                if var_decl_decl_name.is_ident() {
+                    let function_name = var_decl_decl_name.ident().unwrap().sym.to_string();
+                    let function_act = get_function_act(function_name, fn_expr.function);
+                    patches.extend(get_function_patches(function_act, file_path));
+                } else {
+                    let function_name = "unknonVarName".to_string();
+                    let function_act = get_function_act(function_name, fn_expr.function);
+                    patches.extend(get_function_patches(function_act, file_path));
+                }
+            } else if var_decl_decl_init_wraped.is_arrow() {
+                let arrow_expr = var_decl_decl_init_wraped.arrow().unwrap();
+                let function_body = arrow_expr.body;
+                if function_body.is_block_stmt() {
+                    if var_decl_decl_name.is_ident() {
+                        let function_name = var_decl_decl_name.ident().unwrap().sym.to_string();
+                        let function_body_block_stmt = function_body.block_stmt().unwrap();
+                        let function_body_start = function_body_block_stmt.span.lo.0;
+                        let function_act: FunctionAct = FunctionAct {
+                            name: function_name,
+                            params: get_function_params(arrow_expr.params),
+                            body_start: function_body_start,
+                        };
+                        let function_patches: Vec<PatchAct> =
+                            get_function_patches(function_act, file_path);
+                        patches.extend(function_patches);
+                    } else {
+                        let function_name = "unknonVarName".to_string();
+                        let function_body_block_stmt = function_body.block_stmt().unwrap();
+                        let function_body_start = function_body_block_stmt.span.lo.0;
+                        let function_act: FunctionAct = FunctionAct {
+                            name: function_name,
+                            params: get_function_params(arrow_expr.params),
+                            body_start: function_body_start,
+                        };
+                        let function_patches: Vec<PatchAct> =
+                            get_function_patches(function_act, file_path);
+                        patches.extend(function_patches);
+                    }
+                }
+            }
+        }
+    }
+    patches
+}
 pub fn process_function_expr(fn_expr: FnExpr, file_path: &Path) -> Vec<PatchAct> {
     let function_name = fn_expr.ident.unwrap().sym.to_string();
     if fn_expr.function.body.is_some() {
@@ -146,7 +199,7 @@ pub fn process_function_arrow(arrow_expr: ArrowExpr, file_path: &Path) -> Vec<Pa
         let function_body_block_stmt = function_body.block_stmt().unwrap();
         let function_body_start = function_body_block_stmt.span.lo.0;
         let function_act: FunctionAct = FunctionAct {
-            name: "ArrayFunction".to_string(),
+            name: "AnonymousFunction".to_string(),
             params: get_function_params(arrow_expr.params),
             body_start: function_body_start,
         };
@@ -249,6 +302,8 @@ pub fn process_decl(decl: Decl, file_path: &Path) -> Vec<PatchAct> {
     } else if decl.is_class() {
         let class_decl = decl.class().unwrap();
         return process_class_decl(class_decl, file_path);
+    } else if decl.is_var() {
+        return process_var_decl(decl.var().unwrap(), file_path);
     } else {
         return vec![];
     }
