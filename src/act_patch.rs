@@ -8,9 +8,9 @@ use crate::{
     args_parser::ActArgs,
     patch_index_helper::PatchIndexHelper,
 };
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, ValueEnum)]
 pub enum PatchType {
     Warning,
     Error,
