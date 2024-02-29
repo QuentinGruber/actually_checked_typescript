@@ -47,7 +47,7 @@ pub fn gen_param_type_check_patch(
             r#"console.warn({}," and was casted"); {}({});"#,
             log_message, param_js_constructor, param.name
         ),
-        PatchType::Error => format!(r#"throw {};"#, log_message),
+        PatchType::Error => format!(r#"throw new TypeError({});"#, log_message),
         PatchType::Warning => format!(r#"console.warn({});"#, log_message),
     };
     let typeinfo_operator = get_typeinfo_operator_from_acttype(&param.act_type);
